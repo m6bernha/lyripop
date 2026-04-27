@@ -20,6 +20,8 @@
     "core:window:allow-minimize",
     "core:webview:default",
     "core:event:default",
+    "clipboard-manager:allow-write-text",
+    "opener:default",
     "store:default",
     "window-state:default",
     "oauth:default"
