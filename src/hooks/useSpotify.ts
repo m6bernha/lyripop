@@ -57,11 +57,42 @@ export function useSpotify(): UseSpotifyResult {
     }
   }, [client]);
 
+  // Self-rescheduling poll with exponential backoff on failure. On a healthy
+  // run we tick every POLL_INTERVAL_MS; on failure we back off (1s -> 2s -> 4s
+  // -> 8s -> 16s -> max 32s) so a Spotify outage / lost network doesn't turn
+  // into a 1Hz retry storm. Resets to fast cadence on first success.
   useEffect(() => {
-    refresh();
-    const id = window.setInterval(refresh, POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [refresh]);
+    let cancelled = false;
+    let failures = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      try {
+        const next = await client.getPlaybackState();
+        if (cancelled) return;
+        setState(next);
+        setError(null);
+        failures = 0;
+      } catch (e) {
+        if (cancelled) return;
+        failures = Math.min(failures + 1, 6);
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (cancelled) return;
+        setLoading(false);
+        const delay =
+          failures === 0
+            ? POLL_INTERVAL_MS
+            : Math.min(32_000, POLL_INTERVAL_MS * 2 ** failures);
+        timeoutId = setTimeout(tick, delay);
+      }
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+  }, [client]);
 
   const trackId = state?.item?.id ?? null;
   useEffect(() => {

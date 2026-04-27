@@ -21,13 +21,18 @@ const CLIENT_ID =
 
 const CALLBACK_PORT = 8888;
 const REDIRECT_URI = `http://127.0.0.1:${CALLBACK_PORT}/callback`;
+// Scope minimisation: only what the app actually uses.
+//   user-read-currently-playing: cover/title/artist/progress polling
+//   user-read-playback-state:    is_playing, shuffle, repeat, device.volume
+//   user-modify-playback-state:  play/pause/next/previous/seek/volume/shuffle/repeat
+//   user-library-modify:         heart toggle (add/remove from Liked Songs)
+//   user-library-read:           heart filled-state (is the track in Liked Songs)
 const SCOPES = [
   "user-read-currently-playing",
   "user-read-playback-state",
   "user-modify-playback-state",
   "user-library-modify",
   "user-library-read",
-  "user-read-recently-played",
 ].join(" ");
 
 const STORE_FILE = "tokens.json";
@@ -142,6 +147,10 @@ export async function startLogin(): Promise<Tokens> {
   }
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
+  // CSRF/binding defense: random state we'll match against the callback.
+  // PKCE alone blocks code injection, but `state` is the standard belt-and-
+  // suspenders defense and Spotify recommends including it.
+  const stateNonce = generateCodeVerifier();
 
   const port = await startOAuthServer({ ports: [CALLBACK_PORT] });
 
@@ -161,12 +170,23 @@ export async function startLogin(): Promise<Tokens> {
         const u = new URL(cbUrl);
         const code = u.searchParams.get("code");
         const error = u.searchParams.get("error");
+        const returnedState = u.searchParams.get("state");
         clearTimeout(timeout);
         cancelOAuthServer(port).catch(() => {});
         unlisten?.();
-        if (error) reject(new Error(`Spotify auth error: ${error}`));
-        else if (code) resolve(code);
-        else reject(new Error("No code in callback"));
+        if (error) {
+          reject(new Error(`Spotify auth error: ${error}`));
+        } else if (returnedState !== stateNonce) {
+          reject(
+            new Error(
+              "OAuth state mismatch — possible CSRF or replay. Aborting."
+            )
+          );
+        } else if (code) {
+          resolve(code);
+        } else {
+          reject(new Error("No code in callback"));
+        }
       } catch (e) {
         clearTimeout(timeout);
         cancelOAuthServer(port).catch(() => {});
@@ -183,6 +203,7 @@ export async function startLogin(): Promise<Tokens> {
   authUrl.searchParams.set("scope", SCOPES);
   authUrl.searchParams.set("code_challenge_method", "S256");
   authUrl.searchParams.set("code_challenge", codeChallenge);
+  authUrl.searchParams.set("state", stateNonce);
 
   await openUrl(authUrl.toString());
 
