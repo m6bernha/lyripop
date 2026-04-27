@@ -21,9 +21,22 @@
     "core:webview:default",
     "core:event:default",
     "clipboard-manager:allow-write-text",
-    "opener:default",
-    "store:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://accounts.spotify.com/*" },
+        { "url": "https://open.spotify.com/*" }
+      ]
+    },
+    "store:allow-load",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-delete",
+    "store:allow-has",
+    "store:allow-clear",
     "window-state:default",
-    "oauth:default"
+    "oauth:allow-start",
+    "oauth:allow-cancel"
   ]
 }

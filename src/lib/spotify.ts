@@ -133,9 +133,15 @@ export class SpotifyClient {
 
 export function pickCoverUrl(
   images: SpotifyImage[] | undefined,
-  preferred = 300
+  preferred: number | "largest" = "largest"
 ): string | null {
   if (!images || images.length === 0) return null;
+  if (preferred === "largest") {
+    const sorted = [...images].sort(
+      (a, b) => (b.width ?? 0) - (a.width ?? 0)
+    );
+    return sorted[0]?.url ?? images[0].url;
+  }
   const sorted = [...images].sort(
     (a, b) =>
       Math.abs((a.width ?? 0) - preferred) -
