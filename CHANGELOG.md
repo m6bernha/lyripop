@@ -5,10 +5,16 @@ All notable changes to Lyripop are documented here. The format is based on [Keep
 ## [Unreleased]
 
 ### Added
+- BYO Client-ID first-run wizard (`ClientIdSetup` component) — each user creates a personal Spotify Developer app once. Pivot driven by Spotify's May 2025 policy change that restricted extended quota mode to organizations only.
 - Public-facing repo hygiene: `LICENSE` (MIT), `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `NOTICE`
 - `.github/` issue and PR templates
 - CI workflow (typecheck + cargo check on push/PR)
 - Release workflow (Windows `.msi` build on tag, with SignPath signing once approved)
+
+### Changed
+- `auth.ts`: Client ID resolution is now async (env > stored > default). `isConfigured()` is async.
+- AuthGate: new `needs-client-id` state routes to the setup wizard.
+- Opener allowlist now includes `https://developer.spotify.com/*` for the wizard's "Open Dashboard" button.
 
 ## [0.1.0] - TBD
 

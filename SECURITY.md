@@ -63,9 +63,13 @@ If your threat model includes "malware on my user account," consider:
 
 Until [SignPath OSS](https://signpath.org/) approval lands, releases ship without an Authenticode signature. Windows SmartScreen will flag this. The MSI's SHA-256 is published in the release notes — verify it matches before running. We're applying for SignPath OSS sponsorship; tagged release after approval will be auto-signed.
 
-### Spotify Quota Extension (dev-mode 25-user cap)
+### Each user runs their own Spotify Developer app
 
-Spotify Developer apps in dev mode are limited to 25 authorized users. Until our quota extension is approved (typically 2-4 weeks after submission), only 25 users at a time can use the bundled Client ID. Power users can bypass this by creating their own Spotify Developer app and using `.env.local` (see `.env.example`).
+Spotify changed its policy in May 2025 — extended quota mode is now restricted to organizations with company emails, so an individual hobby developer can no longer ship a single shared Client ID that works for everyone. Lyripop's response: each user creates a personal Spotify Developer app on first launch (the in-app wizard walks them through it in ~3 minutes).
+
+Privacy upside: your Spotify Client ID and tokens are scoped to a dev app **you own**. There's no shared `m6bernha`-owned app proxying anything. If you ever revoke the app at https://www.spotify.com/account/apps/, only your own dev app is affected.
+
+Trade-off: a 3-minute first-run setup. We chose this over a centralised hosted service because we'd rather not run a server, hold your tokens, or be a single point of compromise.
 
 ## What we DO
 

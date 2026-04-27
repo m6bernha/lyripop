@@ -6,19 +6,25 @@ import {
 } from "@fabianlars/tauri-plugin-oauth";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-// Lyripop's bundled Spotify Developer app Client ID.
-// PKCE flow doesn't use a client secret, so it's safe to ship the Client ID
-// publicly — Spotify's public-client docs explicitly endorse this.
-// Power users can override via VITE_SPOTIFY_CLIENT_ID in .env.local for their
-// own Spotify Developer app (sovereignty / quota independence).
+// Spotify dev quotas changed in May 2025 — extended quota mode is now only
+// granted to organizations (not individuals). Dev-mode apps are capped at
+// 5 explicitly-allowlisted users, which makes a single bundled Client ID
+// unviable for a public OSS desktop app.
 //
-// To swap this for your own Spotify app: set DEFAULT_CLIENT_ID below.
+// Lyripop's model: each user creates their own personal Spotify Developer
+// app (a one-time ~3-minute step) and pastes the Client ID into the in-app
+// wizard. Their own dev app authorizes them automatically as the owner.
+//
+// Resolution order for the effective Client ID at runtime:
+//   1. VITE_SPOTIFY_CLIENT_ID env var (dev / power users)
+//   2. Stored client-id from the in-app setup wizard
+//   3. DEFAULT_CLIENT_ID source-bake (forks who want a different default)
+//   4. empty -> AuthGate routes the user to the wizard
 const DEFAULT_CLIENT_ID = "";
+const ENV_CLIENT_ID =
+  (import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) || "";
 
-const CLIENT_ID =
-  (import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) ||
-  DEFAULT_CLIENT_ID;
-
+const CLIENT_ID_KEY = "clientId";
 const CALLBACK_PORT = 8888;
 const REDIRECT_URI = `http://127.0.0.1:${CALLBACK_PORT}/callback`;
 // Scope minimisation: only what the app actually uses.
@@ -67,6 +73,46 @@ export async function clearStoredTokens(): Promise<void> {
   await s.save();
 }
 
+// Client-ID storage (BYO wizard). Stored in the same store file as tokens
+// at %APPDATA%\com.m6bernha.lyripop\tokens.json under key "clientId".
+export async function getStoredClientId(): Promise<string | null> {
+  const s = await store();
+  const v = (await s.get<string>(CLIENT_ID_KEY)) as string | undefined;
+  return v && v.length > 0 ? v : null;
+}
+
+export async function setStoredClientId(id: string): Promise<void> {
+  const s = await store();
+  await s.set(CLIENT_ID_KEY, id);
+  // Tokens are bound to a specific Spotify app — clear them whenever the
+  // user changes Client IDs so they re-auth against the new app.
+  await s.delete(TOKENS_KEY);
+  await s.save();
+}
+
+export async function clearStoredClientId(): Promise<void> {
+  const s = await store();
+  await s.delete(CLIENT_ID_KEY);
+  await s.delete(TOKENS_KEY);
+  await s.save();
+}
+
+// Effective Client ID: env -> stored -> default. Returns empty string when
+// no Client ID is configured (AuthGate uses this to route to the wizard).
+export async function getEffectiveClientId(): Promise<string> {
+  if (ENV_CLIENT_ID) return ENV_CLIENT_ID;
+  const stored = await getStoredClientId();
+  if (stored) return stored;
+  return DEFAULT_CLIENT_ID;
+}
+
+// Spotify Client IDs are 32-character lowercase hex strings. We accept that
+// shape for a basic sanity check — full validation happens at OAuth time.
+const CLIENT_ID_PATTERN = /^[a-f0-9]{32}$/i;
+export function isValidClientIdFormat(id: string): boolean {
+  return CLIENT_ID_PATTERN.test(id.trim());
+}
+
 function base64UrlEncode(bytes: ArrayBuffer): string {
   const b = String.fromCharCode(...new Uint8Array(bytes));
   return btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -83,12 +129,16 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64UrlEncode(digest);
 }
 
-async function exchangeCode(code: string, verifier: string): Promise<Tokens> {
+async function exchangeCode(
+  code: string,
+  verifier: string,
+  clientId: string
+): Promise<Tokens> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: REDIRECT_URI,
-    client_id: CLIENT_ID,
+    client_id: clientId,
     code_verifier: verifier,
   });
   const res = await fetch("https://accounts.spotify.com/api/token", {
@@ -113,11 +163,14 @@ async function exchangeCode(code: string, verifier: string): Promise<Tokens> {
   };
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<Tokens> {
+async function refreshAccessToken(
+  refreshToken: string,
+  clientId: string
+): Promise<Tokens> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_id: CLIENT_ID,
+    client_id: clientId,
   });
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -140,9 +193,10 @@ async function refreshAccessToken(refreshToken: string): Promise<Tokens> {
 }
 
 export async function startLogin(): Promise<Tokens> {
-  if (!CLIENT_ID) {
+  const clientId = await getEffectiveClientId();
+  if (!clientId) {
     throw new Error(
-      "VITE_SPOTIFY_CLIENT_ID is not set. Create a Spotify app at developer.spotify.com and add the Client ID to .env.local"
+      "No Spotify Client ID configured. Run the in-app setup wizard to create your Spotify Developer app and paste your Client ID."
     );
   }
   const codeVerifier = generateCodeVerifier();
@@ -198,7 +252,7 @@ export async function startLogin(): Promise<Tokens> {
 
   const authUrl = new URL("https://accounts.spotify.com/authorize");
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("client_id", CLIENT_ID);
+  authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
   authUrl.searchParams.set("scope", SCOPES);
   authUrl.searchParams.set("code_challenge_method", "S256");
@@ -208,7 +262,7 @@ export async function startLogin(): Promise<Tokens> {
   await openUrl(authUrl.toString());
 
   const code = await codePromise;
-  const tokens = await exchangeCode(code, codeVerifier);
+  const tokens = await exchangeCode(code, codeVerifier, clientId);
   await setStoredTokens(tokens);
   return tokens;
 }
@@ -218,12 +272,19 @@ export async function getValidAccessToken(): Promise<string> {
   if (!tokens) {
     tokens = await startLogin();
   } else if (Date.now() > tokens.expires_at - 60_000) {
-    tokens = await refreshAccessToken(tokens.refresh_token);
+    const clientId = await getEffectiveClientId();
+    if (!clientId) {
+      throw new Error(
+        "No Spotify Client ID configured. Run the in-app setup wizard."
+      );
+    }
+    tokens = await refreshAccessToken(tokens.refresh_token, clientId);
     await setStoredTokens(tokens);
   }
   return tokens.access_token;
 }
 
-export function isConfigured(): boolean {
-  return Boolean(CLIENT_ID);
+export async function isConfigured(): Promise<boolean> {
+  const id = await getEffectiveClientId();
+  return Boolean(id);
 }

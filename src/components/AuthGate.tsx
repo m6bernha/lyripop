@@ -1,26 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Music } from "lucide-react";
 import { getStoredTokens, isConfigured, startLogin } from "../lib/auth";
+import ClientIdSetup from "./ClientIdSetup";
 
 interface Props {
   children: React.ReactNode;
 }
 
-type Status = "checking" | "needs-setup" | "needs-login" | "logging-in" | "ready";
+type Status =
+  | "checking"
+  | "needs-client-id"
+  | "needs-login"
+  | "logging-in"
+  | "ready";
 
 export default function AuthGate({ children }: Props) {
   const [status, setStatus] = useState<Status>("checking");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isConfigured()) {
-      setStatus("needs-setup");
-      return;
+  const evaluate = useCallback(async () => {
+    try {
+      if (!(await isConfigured())) {
+        setStatus("needs-client-id");
+        return;
+      }
+      const tokens = await getStoredTokens();
+      setStatus(tokens ? "ready" : "needs-login");
+    } catch {
+      setStatus("needs-client-id");
     }
-    getStoredTokens()
-      .then((t) => setStatus(t ? "ready" : "needs-login"))
-      .catch(() => setStatus("needs-login"));
   }, []);
+
+  useEffect(() => {
+    evaluate();
+  }, [evaluate]);
 
   const onLogin = async () => {
     setStatus("logging-in");
@@ -34,7 +47,14 @@ export default function AuthGate({ children }: Props) {
     }
   };
 
+  const onClientIdSaved = async () => {
+    setStatus("needs-login");
+    setError(null);
+  };
+
   if (status === "ready") return <>{children}</>;
+  if (status === "needs-client-id")
+    return <ClientIdSetup onSaved={onClientIdSaved} />;
 
   return (
     <div
@@ -46,18 +66,6 @@ export default function AuthGate({ children }: Props) {
       </div>
       {status === "checking" && (
         <div className="text-white/60 text-xs">checking auth…</div>
-      )}
-      {status === "needs-setup" && (
-        <>
-          <div className="text-white text-sm font-semibold">
-            App not configured
-          </div>
-          <div className="text-white/60 text-[11px] leading-snug max-w-[280px]">
-            No Spotify Client ID is bundled or set in <code>.env.local</code>.
-            See <span className="text-spotify-green">github.com/m6bernha/lyripop</span>{" "}
-            for setup if you're building from source.
-          </div>
-        </>
       )}
       {status === "needs-login" && (
         <>

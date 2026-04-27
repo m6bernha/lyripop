@@ -20,11 +20,13 @@ A Discord-stream-popout-style desktop widget that pins to a corner of your scree
 - **Always-on-top, frameless, transparent corners.** Drag from anywhere on the cover.
 - **No telemetry. No analytics. No ads.** Direct OAuth to Spotify; tokens never touch a third-party server.
 
-## Install (one click)
+## Install
 
-1. Download the latest **`Lyripop_x.y.z_x64-setup.msi`** from the [Releases page](https://github.com/m6bernha/lyripop/releases).
-2. Double-click → install.
-3. Click **Log in with Spotify**. Your default browser opens. Approve. The widget populates within a couple seconds.
+1. **Download** the latest `Lyripop_x.y.z_x64-setup.msi` from the [Releases page](https://github.com/m6bernha/lyripop/releases) and run it.
+2. **First-run wizard** walks you through a one-time ~3-minute Spotify Developer app setup. The widget itself opens the dashboard, gives you a copy-button for the redirect URI, and validates your Client ID. You only do this once.
+3. **Click "Log in with Spotify"**. Your default browser opens. Approve. The widget populates within a couple seconds.
+
+> **Why a dev-app step?** Spotify changed its policy in May 2025 — "extended quota mode" (which would let one shared Client ID work for everyone) is now only granted to organizations with company emails. As a free hobby project run by an individual, the only honest path forward is for each user to spin up their own personal dev app. It takes 3 minutes, it's free, and the upside is your data stays in your own Spotify dev sandbox — Lyripop never proxies anything.
 
 > **SmartScreen warning?** Until [SignPath OSS](https://signpath.org) signs our releases, Windows may flag the unsigned `.msi` as "unrecognized publisher." Click **More info → Run anyway**. The MSI's SHA-256 hash is published in the GitHub Release notes — verify it matches if you're cautious.
 
@@ -41,7 +43,7 @@ Lyripop talks to exactly four hosts. That's it.
 | `*.scdn.co` | Album cover images |
 | `lrclib.net` | Synced lyrics (free, open, no auth needed) |
 
-**No telemetry. No analytics. No crash reporters. No third-party servers.** Your Spotify tokens are stored in `%APPDATA%\com.m6bernha.lyripop\tokens.json` (read-protected by Windows under your user profile).
+**No telemetry. No analytics. No crash reporters. No third-party servers.** Your Spotify Client ID and tokens are stored in `%APPDATA%\com.m6bernha.lyripop\tokens.json` (read-protected by Windows under your user profile). The Client ID is a public identifier that Spotify itself prints in its dev dashboard — it isn't a secret. Refresh tokens are sensitive; see [SECURITY.md](SECURITY.md) for the full threat model.
 
 See [SECURITY.md](SECURITY.md) for the full threat model and known-acceptable risks.
 
@@ -56,7 +58,7 @@ pnpm tauri dev
 
 Requirements: Node 20+, pnpm 9+, Rust stable (`rustup default stable`), Windows 10+ with WebView2.
 
-For sovereignty (your own Spotify quota / your own credentials), see [`.env.example`](.env.example) — you can override the bundled Client ID with your own.
+For dev work, you can pre-fill the Client ID via `.env.local` (skips the wizard) — see [`.env.example`](.env.example).
 
 ## Built with
 
