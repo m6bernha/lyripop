@@ -31,29 +31,39 @@ export function useLyrics(
   progressMs: number
 ): UseLyricsResult {
   const cacheRef = useRef<Map<string, CachedLyrics>>(new Map());
+  const trackRef = useRef<SpotifyTrack | null>(track);
+  trackRef.current = track;
+
   const [data, setData] = useState<CachedLyrics>(EMPTY);
   const [loading, setLoading] = useState(false);
 
   const trackId = track?.id ?? null;
 
+  // Depend ONLY on trackId. The full track object is read from a ref so we
+  // don't re-trigger the effect on every poll-cycle reference change, which
+  // would cancel the in-flight lyrics fetch every second and leave the UI
+  // stuck on "loading...".
   useEffect(() => {
-    if (!track || !trackId) {
+    const t = trackRef.current;
+    if (!trackId || !t) {
       setData(EMPTY);
+      setLoading(false);
       return;
     }
     const cached = cacheRef.current.get(trackId);
     if (cached) {
       setData(cached);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
     fetchLyrics({
-      trackName: track.name,
-      artistName: track.artists[0]?.name ?? "",
-      albumName: track.album.name,
-      durationSec: Math.round(track.duration_ms / 1000),
+      trackName: t.name,
+      artistName: t.artists[0]?.name ?? "",
+      albumName: t.album.name,
+      durationSec: Math.round(t.duration_ms / 1000),
     })
       .then((r) => {
         if (cancelled) return;
@@ -77,7 +87,7 @@ export function useLyrics(
     return () => {
       cancelled = true;
     };
-  }, [trackId, track]);
+  }, [trackId]);
 
   const activeIndex = useMemo(() => {
     if (!data.syncedLines) return -1;

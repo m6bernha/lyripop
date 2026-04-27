@@ -24,9 +24,9 @@ export async function fetchLyrics(params: {
   if (params.albumName) q.set("album_name", params.albumName);
   if (params.durationSec) q.set("duration", String(params.durationSec));
 
-  const res = await fetch(`${LRCLIB_BASE}/get?${q.toString()}`, {
-    headers: { "User-Agent": "spotify-widget/0.1 (+local)" },
-  });
+  // Note: browsers/webviews strip a custom User-Agent silently; lrclib doesn't
+  // require one, so we don't try to set it.
+  const res = await fetch(`${LRCLIB_BASE}/get?${q.toString()}`);
   if (res.status === 404) {
     return { syncedLyrics: null, plainLyrics: null, instrumental: false };
   }
