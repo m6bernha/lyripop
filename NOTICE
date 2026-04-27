@@ -1,0 +1,110 @@
+Lyripop
+Copyright (c) 2026 m6bernha
+Licensed under the MIT License (see LICENSE).
+
+This product includes software developed by third parties.
+The respective licenses are listed below.
+
+================================================================================
+NPM dependencies — runtime
+================================================================================
+
+@fabianlars/tauri-plugin-oauth
+  https://github.com/FabianLars/tauri-plugin-oauth
+  License: MIT
+
+@tauri-apps/api
+@tauri-apps/plugin-clipboard-manager
+@tauri-apps/plugin-opener
+@tauri-apps/plugin-store
+@tauri-apps/plugin-window-state
+  https://github.com/tauri-apps/tauri (api)
+  https://github.com/tauri-apps/plugins-workspace (plugins)
+  License: MIT OR Apache-2.0
+
+framer-motion
+  https://github.com/motiondivision/motion
+  License: MIT
+
+lucide-react
+  https://github.com/lucide-icons/lucide
+  License: ISC
+
+node-vibrant
+  https://github.com/Vibrant-Colors/node-vibrant
+  License: MIT
+
+react / react-dom
+  https://github.com/facebook/react
+  License: MIT
+
+================================================================================
+NPM dependencies — build / dev
+================================================================================
+
+tailwindcss / @tailwindcss/vite
+  https://github.com/tailwindlabs/tailwindcss
+  License: MIT
+
+@tauri-apps/cli
+  License: MIT OR Apache-2.0
+
+typescript
+  https://github.com/microsoft/TypeScript
+  License: Apache-2.0
+
+vite / @vitejs/plugin-react
+  https://github.com/vitejs/vite
+  License: MIT
+
+@types/react / @types/react-dom (DefinitelyTyped)
+  License: MIT
+
+================================================================================
+Rust dependencies
+================================================================================
+
+tauri / tauri-build
+  https://github.com/tauri-apps/tauri
+  License: MIT OR Apache-2.0
+
+tauri-plugin-clipboard-manager
+tauri-plugin-opener
+tauri-plugin-store
+tauri-plugin-window-state
+  https://github.com/tauri-apps/plugins-workspace
+  License: MIT OR Apache-2.0
+
+tauri-plugin-oauth
+  https://github.com/FabianLars/tauri-plugin-oauth
+  License: MIT
+
+serde / serde_json
+  https://github.com/serde-rs/serde
+  License: MIT OR Apache-2.0
+
+(Transitive dependencies inherit the licenses of their respective crates.
+ Run `cargo about generate` for a full attribution list once that's wired up
+ in CI.)
+
+================================================================================
+Data / API providers
+================================================================================
+
+lrclib.net (synced + plain lyrics)
+  https://lrclib.net
+  Source: https://github.com/tranxuanthang/lrclib
+  Backend license: AGPL-3.0
+  Lyripop uses only the public read API and is not a derivative work of the
+  backend. Full credit to the lrclib maintainers and contributors for the
+  open lyrics database.
+
+Spotify Web API
+  https://developer.spotify.com/documentation/web-api
+  Used under Spotify's Developer Terms of Service.
+  "Spotify" is a trademark of Spotify AB. Lyripop is an independent project
+  not affiliated with, endorsed by, or sponsored by Spotify AB.
+
+================================================================================
+
+For the full text of each license, see each project's repository.
