@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Spotify Widget",
+  "version": "0.1.0",
+  "identifier": "com.matthias.spotifywidget",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Spotify Widget",
+        "width": 380,
+        "height": 140,
+        "minWidth": 320,
+        "minHeight": 80,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "shadow": false,
+        "fullscreen": false,
+        "center": false,
+        "visible": true,
+        "backgroundColor": "#00000000"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' data: blob: https://i.scdn.co https://*.scdn.co https://mosaic.scdn.co https://*.spotifycdn.com asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost https://api.spotify.com https://accounts.spotify.com https://lrclib.net http://127.0.0.1:8888 http://localhost:8888; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
