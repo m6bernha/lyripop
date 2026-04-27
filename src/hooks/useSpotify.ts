@@ -24,6 +24,7 @@ export interface UseSpotifyResult {
   toggleShuffle: () => Promise<void>;
   cycleRepeat: () => Promise<void>;
   toggleLiked: () => Promise<void>;
+  seek: (ms: number) => Promise<void>;
 }
 
 const NEXT_REPEAT: Record<RepeatState, RepeatState> = {
@@ -119,6 +120,17 @@ export function useSpotify(): UseSpotifyResult {
     await client.setRepeat(NEXT_REPEAT[state.repeat_state]);
     await refresh();
   }, [client, state, refresh]);
+  const seek = useCallback(
+    async (ms: number) => {
+      try {
+        await client.seek(ms);
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [client, refresh]
+  );
   const toggleLiked = useCallback(async () => {
     if (!trackId) return;
     const newLiked = !liked;
@@ -147,5 +159,6 @@ export function useSpotify(): UseSpotifyResult {
     toggleShuffle,
     cycleRepeat,
     toggleLiked,
+    seek,
   };
 }
