@@ -1,23 +1,29 @@
 import { AnimatePresence } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Heart, ListMusic, Mic2, X } from "lucide-react";
 import { useState } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useSpotify } from "../hooks/useSpotify";
 import { pickCoverUrl } from "../lib/spotify";
 import AmbientBackground from "./AmbientBackground";
 import HoverControls from "./HoverControls";
 import LyricsCarousel from "./LyricsCarousel";
+import QueuePanel from "./QueuePanel";
+
+export type View = "lyrics" | "queue" | "none";
 
 interface Props {
-  showLyrics: boolean;
+  view: View;
   aggressiveColors: boolean;
+  onSetView: (v: View) => void;
 }
 
-export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
+export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props) {
   const {
     state,
     liked,
     error,
+    client,
     togglePlay,
     next,
     previous,
@@ -25,11 +31,12 @@ export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
     toggleShuffle,
     cycleRepeat,
     toggleLiked,
+    seek,
   } = useSpotify();
   const [hovered, setHovered] = useState(false);
 
   const track = state?.item ?? null;
-  const cover = pickCoverUrl(track?.album?.images, 300);
+  const cover = pickCoverUrl(track?.album?.images, "largest");
 
   const onShare = async () => {
     const url = track?.external_urls?.spotify;
@@ -41,6 +48,17 @@ export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
     }
   };
 
+  const onClose = async () => {
+    try {
+      await getCurrentWindow().hide();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const onToggleLyrics = () => onSetView(view === "lyrics" ? "none" : "lyrics");
+  const onToggleQueue = () => onSetView(view === "queue" ? "none" : "queue");
+
   return (
     <div
       data-tauri-drag-region
@@ -48,12 +66,13 @@ export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
     >
       <AmbientBackground coverUrl={cover} aggressive={aggressiveColors} />
 
+      {/* Cover area (top, dominant) */}
       <div
         data-tauri-drag-region
-        className="flex items-center gap-3 p-3 min-h-0"
+        className="relative px-4 pt-4 pb-2 flex items-center justify-center"
       >
         <div
-          className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-black/40 cursor-default"
+          className="relative aspect-square w-full max-w-[280px] rounded-xl overflow-hidden bg-black/40 shadow-xl"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -79,24 +98,25 @@ export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
                 onShuffle={toggleShuffle}
                 onRepeat={cycleRepeat}
                 onVolume={setVolume}
+                onSeek={seek}
                 onShare={onShare}
               />
             )}
           </AnimatePresence>
         </div>
+      </div>
 
-        <div
-          data-tauri-drag-region
-          className="flex-1 min-w-0 flex flex-col justify-center"
-        >
-          <div className="text-[15px] font-semibold text-white truncate leading-tight">
+      {/* Info strip */}
+      <div
+        data-tauri-drag-region
+        className="relative px-4 py-2 flex items-center gap-1"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] font-bold text-white truncate leading-tight">
             {track?.name ?? "Nothing playing"}
           </div>
-          <div className="text-[12px] text-white/70 truncate mt-0.5">
+          <div className="text-[12px] text-white/65 truncate mt-0.5">
             {track?.artists?.map((a) => a.name).join(", ") ?? ""}
-          </div>
-          <div className="text-[11px] text-white/45 truncate mt-0.5">
-            {track?.album?.name ?? ""}
           </div>
         </div>
 
@@ -110,17 +130,55 @@ export default function MiniPlayer({ showLyrics, aggressiveColors }: Props) {
               : "text-white/70 hover:text-white"
           } ${!track?.id ? "opacity-40 cursor-not-allowed" : ""}`}
         >
-          <Heart
-            size={18}
-            strokeWidth={2}
-            fill={liked ? "currentColor" : "none"}
-          />
+          <Heart size={18} strokeWidth={2} fill={liked ? "currentColor" : "none"} />
+        </button>
+
+        <button
+          onClick={onToggleLyrics}
+          title={view === "lyrics" ? "Hide lyrics" : "Show lyrics"}
+          className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
+            view === "lyrics"
+              ? "text-spotify-green hover:text-spotify-green-bright"
+              : "text-white/70 hover:text-white"
+          }`}
+        >
+          <Mic2 size={16} strokeWidth={2} />
+        </button>
+
+        <button
+          onClick={onToggleQueue}
+          title={view === "queue" ? "Hide queue" : "Show queue"}
+          className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
+            view === "queue"
+              ? "text-spotify-green hover:text-spotify-green-bright"
+              : "text-white/70 hover:text-white"
+          }`}
+        >
+          <ListMusic size={16} strokeWidth={2} />
+        </button>
+
+        <button
+          onClick={onClose}
+          title="Hide widget"
+          className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-white/70 hover:text-white transition-colors"
+        >
+          <X size={16} strokeWidth={2} />
         </button>
       </div>
 
-      {showLyrics && (
-        <div className="border-t border-white/5">
-          <LyricsCarousel track={track} progressMs={state?.progress_ms ?? 0} />
+      {/* Bottom view: lyrics OR queue OR nothing */}
+      {view === "lyrics" && (
+        <div className="relative flex-1 min-h-0 border-t border-white/5">
+          <LyricsCarousel
+            track={track}
+            progressMs={state?.progress_ms ?? 0}
+            onSeek={seek}
+          />
+        </div>
+      )}
+      {view === "queue" && (
+        <div className="relative flex-1 min-h-0 border-t border-white/5">
+          <QueuePanel client={client} trackId={track?.id ?? null} />
         </div>
       )}
 
