@@ -1,12 +1,14 @@
 [package]
-name = "spotify-widget"
+name = "lyripop"
 version = "0.1.0"
 description = "Floating Spotify mini-player with synced lyrics"
-authors = ["Matthias Bernhard"]
+authors = ["m6bernha <matthias.bernhard7@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/m6bernha/lyripop"
 edition = "2021"
 
 [lib]
-name = "spotify_widget_lib"
+name = "lyripop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

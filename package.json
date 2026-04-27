@@ -1,7 +1,18 @@
 {
-  "name": "spotify-widget",
+  "name": "lyripop",
   "private": true,
   "version": "0.1.0",
+  "description": "Floating Spotify mini-player with synced lyrics — open source, ad-free, no telemetry.",
+  "author": "m6bernha",
+  "license": "MIT",
+  "homepage": "https://github.com/m6bernha/lyripop",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m6bernha/lyripop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/m6bernha/lyripop/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

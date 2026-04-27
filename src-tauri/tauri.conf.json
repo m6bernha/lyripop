@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Spotify Widget",
+  "productName": "Lyripop",
   "version": "0.1.0",
-  "identifier": "com.matthias.spotifywidget",
+  "identifier": "com.m6bernha.lyripop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Spotify Widget",
+        "title": "Lyripop",
         "width": 320,
         "height": 540,
         "minWidth": 260,
