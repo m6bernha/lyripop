@@ -6,7 +6,19 @@ import {
 } from "@fabianlars/tauri-plugin-oauth";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-const CLIENT_ID = (import.meta.env.VITE_SPOTIFY_CLIENT_ID as string) ?? "";
+// Lyripop's bundled Spotify Developer app Client ID.
+// PKCE flow doesn't use a client secret, so it's safe to ship the Client ID
+// publicly — Spotify's public-client docs explicitly endorse this.
+// Power users can override via VITE_SPOTIFY_CLIENT_ID in .env.local for their
+// own Spotify Developer app (sovereignty / quota independence).
+//
+// To swap this for your own Spotify app: set DEFAULT_CLIENT_ID below.
+const DEFAULT_CLIENT_ID = "";
+
+const CLIENT_ID =
+  (import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined) ||
+  DEFAULT_CLIENT_ID;
+
 const CALLBACK_PORT = 8888;
 const REDIRECT_URI = `http://127.0.0.1:${CALLBACK_PORT}/callback`;
 const SCOPES = [

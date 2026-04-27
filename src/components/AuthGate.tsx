@@ -49,11 +49,13 @@ export default function AuthGate({ children }: Props) {
       )}
       {status === "needs-setup" && (
         <>
-          <div className="text-white text-sm font-semibold">Setup needed</div>
+          <div className="text-white text-sm font-semibold">
+            App not configured
+          </div>
           <div className="text-white/60 text-[11px] leading-snug max-w-[280px]">
-            Set <code>VITE_SPOTIFY_CLIENT_ID</code> in <code>.env.local</code>{" "}
-            from your Spotify app at{" "}
-            <span className="text-spotify-green">developer.spotify.com</span>.
+            No Spotify Client ID is bundled or set in <code>.env.local</code>.
+            See <span className="text-spotify-green">github.com/m6bernha/lyripop</span>{" "}
+            for setup if you're building from source.
           </div>
         </>
       )}
