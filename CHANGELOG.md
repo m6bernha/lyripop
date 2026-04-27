@@ -16,7 +16,7 @@ All notable changes to Lyripop are documented here. The format is based on [Keep
 - AuthGate: new `needs-client-id` state routes to the setup wizard.
 - Opener allowlist now includes `https://developer.spotify.com/*` for the wizard's "Open Dashboard" button.
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-04-27
 
 First public release.
 
