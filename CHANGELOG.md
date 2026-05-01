@@ -5,6 +5,14 @@ All notable changes to Lyripop are documented here. The format is based on [Keep
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.1.1] - 2026-04-30
+
+### Added
 - BYO Client-ID first-run wizard (`ClientIdSetup` component) — each user creates a personal Spotify Developer app once. Pivot driven by Spotify's May 2025 policy change that restricted extended quota mode to organizations only.
 - Public-facing repo hygiene: `LICENSE` (MIT), `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `NOTICE`
 - `.github/` issue and PR templates
@@ -44,5 +52,6 @@ First public release.
 - Tight Content-Security-Policy: only `accounts.spotify.com`, `api.spotify.com`, `*.scdn.co`, `lrclib.net` reachable
 - No telemetry, no analytics, no third-party hosts
 
-[Unreleased]: https://github.com/m6bernha/lyripop/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/m6bernha/lyripop/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/m6bernha/lyripop/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/m6bernha/lyripop/releases/tag/v0.1.0
