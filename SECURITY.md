@@ -18,7 +18,7 @@ Only the latest released version receives security fixes. As a single-developer 
 | Latest release on `main` | ✅ |
 | Older | ❌ — please update |
 
-## Threat model (v0.1.0)
+## Threat model (v0.1.1)
 
 Lyripop is a personal-machine desktop widget. The threat model:
 
@@ -39,7 +39,7 @@ Lyripop is a personal-machine desktop widget. The threat model:
 - Spotify itself acting maliciously
 - WebView2 or Windows OS vulnerabilities (report to Microsoft)
 
-## Known-acceptable risks (v0.1.0)
+## Known-acceptable risks (v0.1.1)
 
 ### Plaintext token storage
 

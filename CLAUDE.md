@@ -74,6 +74,8 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 - Style-only rewrites of existing code.
 - Suggestions to centralize the Client ID — Spotify policy blocks shared Client IDs above 25 users; the BYO wizard is here to stay.
 
-## Gotcha
+## Gotcha — bash env propagation
 
-**Neither `pnpm` nor `cargo` is on PATH on this Windows machine.** Pre-commit checks (tsc, cargo check, cargo clippy) defer to GitHub CI. See `~/.claude/projects/C--Users-matth--vscode-projects-lyripop/memory/feedback_no_local_build_toolchain.md`.
+Local toolchain installed **2026-05-02**: `pnpm 10.33.2`, `Rust 1.95.0`, `MSVC BuildTools 17.14.31` + Win11 SDK 22621. Pre-commit checks (`tsc --noEmit`, `cargo check`, `cargo clippy`) all run locally now. CI is still the source of truth.
+
+**But:** Claude Code's bash sessions inherit the parent process's stale env, not the Windows registry. After any system installer updates user-PATH, existing bash calls can't resolve the new binary by name — even though a fresh terminal on the desktop can. Workaround: full-path invocation until Claude Code restarts. Path table + corepack-vs-Program-Files note: `~/.claude/projects/C--Users-matth--vscode-projects-lyripop/memory/feedback_no_local_build_toolchain.md`.
