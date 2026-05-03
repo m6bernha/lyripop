@@ -7,7 +7,9 @@
 
 A Discord-stream-popout-style desktop widget that pins to a corner of your screen, stays on top of every other app, and shows whatever you're playing on Spotify with synced lyrics rolling underneath. Useful while you work, game, or read.
 
-<!-- TODO: hero screenshot at docs/screenshot.png -->
+<p align="center">
+  <img src="docs/screenshot.png" alt="Lyripop widget showing Givēon — TWENTIES with synced lyrics" width="320" />
+</p>
 
 ## Features
 

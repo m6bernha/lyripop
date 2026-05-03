@@ -28,3 +28,7 @@ dist-ssr
 .env.local
 .tokens.json
 .spotipy_cache
+
+# Claude Code chat-attached images and ad-hoc helper scripts
+image-*.png
+_*.ps1
