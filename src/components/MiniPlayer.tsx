@@ -3,9 +3,11 @@ import { Heart, ListMusic, Mic2, X } from "lucide-react";
 import { useState } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { Mode } from "../App";
 import { useSpotify } from "../hooks/useSpotify";
 import { pickCoverUrl } from "../lib/spotify";
 import AmbientBackground from "./AmbientBackground";
+import ExpandToggle from "./ExpandToggle";
 import HoverControls from "./HoverControls";
 import LyricsCarousel from "./LyricsCarousel";
 import QueuePanel from "./QueuePanel";
@@ -14,11 +16,19 @@ export type View = "lyrics" | "queue" | "none";
 
 interface Props {
   view: View;
+  mode: Mode;
   aggressiveColors: boolean;
   onSetView: (v: View) => void;
+  onToggleMode: () => void;
 }
 
-export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props) {
+export default function MiniPlayer({
+  view,
+  mode,
+  aggressiveColors,
+  onSetView,
+  onToggleMode,
+}: Props) {
   const {
     state,
     liked,
@@ -34,9 +44,11 @@ export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props)
     seek,
   } = useSpotify();
   const [hovered, setHovered] = useState(false);
+  const [widgetHovered, setWidgetHovered] = useState(false);
 
   const track = state?.item ?? null;
   const cover = pickCoverUrl(track?.album?.images, "largest");
+  const isExpanded = mode === "expanded";
 
   const onShare = async () => {
     const url = track?.external_urls?.spotify;
@@ -62,6 +74,8 @@ export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props)
   return (
     <div
       data-tauri-drag-region
+      onMouseEnter={() => setWidgetHovered(true)}
+      onMouseLeave={() => setWidgetHovered(false)}
       className="relative w-full h-full flex flex-col rounded-2xl overflow-hidden border border-white/5 shadow-2xl"
     >
       <AmbientBackground coverUrl={cover} aggressive={aggressiveColors} />
@@ -133,29 +147,33 @@ export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props)
           <Heart size={18} strokeWidth={2} fill={liked ? "currentColor" : "none"} />
         </button>
 
-        <button
-          onClick={onToggleLyrics}
-          title={view === "lyrics" ? "Hide lyrics" : "Show lyrics"}
-          className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
-            view === "lyrics"
-              ? "text-spotify-green hover:text-spotify-green-bright"
-              : "text-white/70 hover:text-white"
-          }`}
-        >
-          <Mic2 size={16} strokeWidth={2} />
-        </button>
+        {!isExpanded && (
+          <>
+            <button
+              onClick={onToggleLyrics}
+              title={view === "lyrics" ? "Hide lyrics" : "Show lyrics"}
+              className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
+                view === "lyrics"
+                  ? "text-spotify-green hover:text-spotify-green-bright"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              <Mic2 size={16} strokeWidth={2} />
+            </button>
 
-        <button
-          onClick={onToggleQueue}
-          title={view === "queue" ? "Hide queue" : "Show queue"}
-          className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
-            view === "queue"
-              ? "text-spotify-green hover:text-spotify-green-bright"
-              : "text-white/70 hover:text-white"
-          }`}
-        >
-          <ListMusic size={16} strokeWidth={2} />
-        </button>
+            <button
+              onClick={onToggleQueue}
+              title={view === "queue" ? "Hide queue" : "Show queue"}
+              className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
+                view === "queue"
+                  ? "text-spotify-green hover:text-spotify-green-bright"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              <ListMusic size={16} strokeWidth={2} />
+            </button>
+          </>
+        )}
 
         <button
           onClick={onClose}
@@ -166,20 +184,37 @@ export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props)
         </button>
       </div>
 
-      {/* Bottom view: lyrics OR queue OR nothing */}
-      {view === "lyrics" && (
-        <div className="relative flex-1 min-h-0 border-t border-white/5">
-          <LyricsCarousel
-            track={track}
-            progressMs={state?.progress_ms ?? 0}
-            onSeek={seek}
-          />
+      {/* Bottom view: compact = single panel toggle, expanded = both side-by-side */}
+      {isExpanded ? (
+        <div className="relative flex-1 min-h-0 flex flex-row border-t border-white/5">
+          <div className="relative flex-1 min-w-0">
+            <LyricsCarousel
+              track={track}
+              progressMs={state?.progress_ms ?? 0}
+              onSeek={seek}
+            />
+          </div>
+          <div className="relative flex-1 min-w-0 border-l border-white/5">
+            <QueuePanel client={client} trackId={track?.id ?? null} />
+          </div>
         </div>
-      )}
-      {view === "queue" && (
-        <div className="relative flex-1 min-h-0 border-t border-white/5">
-          <QueuePanel client={client} trackId={track?.id ?? null} />
-        </div>
+      ) : (
+        <>
+          {view === "lyrics" && (
+            <div className="relative flex-1 min-h-0 border-t border-white/5">
+              <LyricsCarousel
+                track={track}
+                progressMs={state?.progress_ms ?? 0}
+                onSeek={seek}
+              />
+            </div>
+          )}
+          {view === "queue" && (
+            <div className="relative flex-1 min-h-0 border-t border-white/5">
+              <QueuePanel client={client} trackId={track?.id ?? null} />
+            </div>
+          )}
+        </>
       )}
 
       {error && (
@@ -187,6 +222,8 @@ export default function MiniPlayer({ view, aggressiveColors, onSetView }: Props)
           {error}
         </div>
       )}
+
+      <ExpandToggle mode={mode} visible={widgetHovered} onToggle={onToggleMode} />
     </div>
   );
 }

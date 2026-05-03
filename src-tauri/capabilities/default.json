@@ -9,8 +9,13 @@
     "core:window:allow-set-size",
     "core:window:allow-start-dragging",
     "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
     "core:webview:default",
     "core:event:default",
+    "core:tray:default",
+    "core:menu:default",
+    "core:app:allow-default-window-icon",
     "clipboard-manager:allow-write-text",
     {
       "identifier": "opener:allow-open-url",

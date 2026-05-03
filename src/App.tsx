@@ -5,12 +5,17 @@ import AuthGate from "./components/AuthGate";
 import MiniPlayer, { type View } from "./components/MiniPlayer";
 
 const VIEW_PREF_KEY = "view";
-// 280 cover + 60 info strip + ~160 lyrics/queue (5 visible items) + 40 padding.
-const DEFAULT_WIDTH = 320;
+const MODE_PREF_KEY = "mode";
+
+const COMPACT_WIDTH = 320;
+const EXPANDED_WIDTH = 640;
 const DEFAULT_HEIGHT_WITH_VIEW = 540;
 const DEFAULT_HEIGHT_NO_VIEW = 360;
 
+export type Mode = "compact" | "expanded";
+
 const VALID_VIEWS: View[] = ["lyrics", "queue", "none"];
+const VALID_MODES: Mode[] = ["compact", "expanded"];
 
 function readStoredView(): View {
   try {
@@ -22,21 +27,43 @@ function readStoredView(): View {
   return "lyrics";
 }
 
-function heightFor(view: View): number {
-  return view === "none" ? DEFAULT_HEIGHT_NO_VIEW : DEFAULT_HEIGHT_WITH_VIEW;
+function readStoredMode(): Mode {
+  try {
+    const m = localStorage.getItem(MODE_PREF_KEY);
+    if (m && (VALID_MODES as string[]).includes(m)) return m as Mode;
+  } catch {
+    /* ignore */
+  }
+  return "compact";
+}
+
+function sizeFor(mode: Mode, view: View): { width: number; height: number } {
+  if (mode === "expanded") {
+    return { width: EXPANDED_WIDTH, height: DEFAULT_HEIGHT_WITH_VIEW };
+  }
+  return {
+    width: COMPACT_WIDTH,
+    height: view === "none" ? DEFAULT_HEIGHT_NO_VIEW : DEFAULT_HEIGHT_WITH_VIEW,
+  };
 }
 
 export default function App() {
   const [view, setView] = useState<View>(readStoredView);
+  const [mode, setMode] = useState<Mode>(readStoredMode);
   const [aggressiveColors, _setAggressiveColors] = useState(false);
 
-  // Set window height to match the persisted view on launch.
+  // Drive the Tauri window size from (mode, view). Persist mode each change.
   useEffect(() => {
+    const { width, height } = sizeFor(mode, view);
     getCurrentWindow()
-      .setSize(new LogicalSize(DEFAULT_WIDTH, heightFor(view)))
+      .setSize(new LogicalSize(width, height))
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    try {
+      localStorage.setItem(MODE_PREF_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  }, [mode, view]);
 
   const handleSetView = (next: View) => {
     setView(next);
@@ -45,17 +72,20 @@ export default function App() {
     } catch {
       /* ignore */
     }
-    getCurrentWindow()
-      .setSize(new LogicalSize(DEFAULT_WIDTH, heightFor(next)))
-      .catch(() => {});
+  };
+
+  const handleToggleMode = () => {
+    setMode((prev) => (prev === "expanded" ? "compact" : "expanded"));
   };
 
   return (
     <AuthGate>
       <MiniPlayer
         view={view}
+        mode={mode}
         aggressiveColors={aggressiveColors}
         onSetView={handleSetView}
+        onToggleMode={handleToggleMode}
       />
     </AuthGate>
   );
