@@ -20,6 +20,8 @@ A Discord-stream-popout-style desktop widget that pins to a corner of your scree
 - **Queue panel** with one-click skip-to-track preserving everything after.
 - **Ambient album-color gradient** background (powered by `node-vibrant`).
 - **Always-on-top, frameless, transparent corners.** Drag from anywhere on the cover.
+- **System tray icon** — closing the widget hides it; click the tray icon to bring it back. Right-click for Show/Hide + Quit.
+- **Compact / expanded toggle** — hover the widget to reveal a corner button that swaps between the 320×540 single-panel widget and a 640×540 layout with lyrics and queue side-by-side.
 - **No telemetry. No analytics. No ads.** Direct OAuth to Spotify; tokens never touch a third-party server.
 
 ## Install

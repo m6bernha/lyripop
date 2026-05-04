@@ -1,6 +1,6 @@
 # Lyripop — Claude Code project guide
 
-Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 in flight 2026-05-01.
+Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 shipped 2026-05-02, post-v0.1.1 features (system tray + full-size mode) on `main` 2026-05-04 — next tag pending.
 
 ## Mission
 
@@ -35,20 +35,21 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 - `src/lib/auth.ts` — OAuth/PKCE flow, token handling. Changes need security review.
 - `src-tauri/capabilities/default.json` — Tauri permission grants. Every permission must correspond to a real call site.
 - `src-tauri/tauri.conf.json` — `app.security.csp` and bundle config. Only loosen CSP with documented reason.
-- `package.json` + `src-tauri/Cargo.toml` deps — adding a new dep requires justifying why stdlib / existing deps don't suffice. Keep the graph small.
+- `package.json` + `src-tauri/Cargo.toml` deps — adding a new dep requires justifying why stdlib / existing deps don't suffice. Keep the graph small. Tauri features (e.g. `tray-icon`) are gated and need explicit opt-in — see memory `feedback_tauri_tray_feature_gate.md`.
 - Anything that adds a new outbound host — must update SECURITY.md, README.md privacy table, and CSP.
 
 ## Key files
 
 | Path | LOC | Purpose |
 |---|---|---|
-| `src/App.tsx` | 62 | Root, AuthGate routing |
+| `src/App.tsx` | 92 | Root, AuthGate routing, `mode` + `view` state, window-size driver |
 | `src/components/AuthGate.tsx` | 101 | Auth state machine: `loading` / `needs-client-id` / `needs-login` / `authed` |
 | `src/components/ClientIdSetup.tsx` | 168 | First-run BYO Client-ID wizard (Spotify May-2025 quota pivot) |
-| `src/components/MiniPlayer.tsx` | 192 | Now-playing + lyrics/queue view toggle + ambient color |
+| `src/components/MiniPlayer.tsx` | 229 | Now-playing + lyrics/queue view toggle + ambient color + widget-level hover state + expanded side-by-side layout |
 | `src/components/HoverControls.tsx` | 241 | Inline playback controls + scrubber + volume + share + like |
 | `src/components/LyricsCarousel.tsx` | 176 | Synced lyrics with wheel-scroll, click-to-seek, idle snap-back |
 | `src/components/QueuePanel.tsx` | 130 | Up-next list with click-to-skip preserving rest of queue |
+| `src/components/ExpandToggle.tsx` | 34 | Hover-reveal compact↔expanded button (bottom-right, framer-motion fade) |
 | `src/components/AmbientBackground.tsx` | 35 | Album-color gradient (node-vibrant) |
 | `src/hooks/useSpotify.ts` | 195 | Now-playing polling with exponential backoff (1s→32s) |
 | `src/hooks/useLyrics.ts` | 104 | lrclib fetch + LRC parsing + active-line tracking |
@@ -56,7 +57,7 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 | `src/lib/auth.ts` | 290 | PKCE OAuth, token storage (`%APPDATA%\com.m6bernha.lyripop\tokens.json`), silent refresh |
 | `src/lib/spotify.ts` | 151 | API client (`apiCall` wrapper) — single point for 401/429 handling work |
 | `src/lib/lrclib.ts` | 86 | LRC parser, plain-lyrics fallback |
-| `src-tauri/src/lib.rs` | 28 | Tauri plugin registration |
+| `src-tauri/src/lib.rs` | 79 | Tauri plugin registration + tray icon (Show/Hide + Quit menu) + window toggle helper |
 | `src-tauri/src/main.rs` | 6 | Entry shim |
 
 ## Reusable patterns (don't reinvent)
