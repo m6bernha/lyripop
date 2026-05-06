@@ -1,5 +1,39 @@
 const API_BASE = "https://api.spotify.com/v1";
 
+// 5s default when Spotify returns 429 without a Retry-After header. Spotify
+// usually returns 1-3s in practice; the cap below clamps the upper bound so
+// a malformed/abusive header can't put us into a multi-minute back-off.
+const DEFAULT_RATE_LIMIT_MS = 5_000;
+const MAX_RATE_LIMIT_MS = 60_000;
+
+/**
+ * Thrown when the API returned 401 after a forced-refresh retry, or 403 (the
+ * scope/account-state case where retrying with a fresh token wouldn't help).
+ * The caller is expected to clear stored tokens and route the user back to
+ * the AuthGate "Connect Spotify" screen.
+ */
+export class SpotifyAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SpotifyAuthError";
+  }
+}
+
+/**
+ * Thrown when Spotify returns 429. Carries the parsed (or defaulted) backoff
+ * window so polling callers can honour Retry-After instead of falling through
+ * to the generic exponential ladder.
+ */
+export class SpotifyRateLimitError extends Error {
+  constructor(
+    public readonly retryAfterMs: number,
+    message: string
+  ) {
+    super(message);
+    this.name = "SpotifyRateLimitError";
+  }
+}
+
 export interface SpotifyArtist {
   id: string;
   name: string;
@@ -49,25 +83,92 @@ export interface QueueResponse {
 
 type Json = Record<string, unknown>;
 
-export class SpotifyClient {
-  constructor(private getAccessToken: () => Promise<string>) {}
+interface ReqInit {
+  method?: string;
+  body?: Json;
+}
 
-  private async req<T>(
-    path: string,
-    init?: { method?: string; body?: Json }
-  ): Promise<T | null> {
+export class SpotifyClient {
+  /**
+   * @param getAccessToken     Returns a valid access token. Performs the
+   *                           pre-emptive 60s refresh internally (see
+   *                           auth.ts:getValidAccessToken).
+   * @param forceRefreshToken  Bypasses the pre-emptive window and refreshes
+   *                           unconditionally. Used to recover from 401s where
+   *                           our cached `expires_at` was wrong (clock skew
+   *                           or early server-side revocation).
+   */
+  constructor(
+    private getAccessToken: () => Promise<string>,
+    private forceRefreshToken: () => Promise<string>
+  ) {}
+
+  /**
+   * Issue an authenticated request. Centralises 401/403/429 handling so call
+   * sites don't have to repeat it.
+   *
+   * - 200 / JSON       → parsed body
+   * - 200 / non-JSON   → null
+   * - 202 / 204        → null
+   * - 401              → forced refresh + ONE retry; second 401 throws SpotifyAuthError
+   * - 403              → throws SpotifyAuthError (no retry)
+   * - 429              → throws SpotifyRateLimitError carrying retryAfterMs
+   * - other non-2xx    → throws plain Error with status + body
+   */
+  private async req<T>(path: string, init?: ReqInit): Promise<T | null> {
     const token = await this.getAccessToken();
+    const res = await this.send(path, init, token);
+
+    if (res.status === 401) {
+      // One forced-refresh retry. If the second call also returns 401, the
+      // refresh token itself is no good — surface re-auth.
+      let freshToken: string;
+      try {
+        freshToken = await this.forceRefreshToken();
+      } catch {
+        throw new SpotifyAuthError("re-authentication required");
+      }
+      const retry = await this.send(path, init, freshToken);
+      if (retry.status === 401) {
+        throw new SpotifyAuthError("re-authentication required");
+      }
+      return this.parse<T>(retry, path);
+    }
+
+    if (res.status === 403) {
+      throw new SpotifyAuthError(
+        "forbidden — token scope or account state issue"
+      );
+    }
+
+    if (res.status === 429) {
+      throw new SpotifyRateLimitError(
+        parseRetryAfter(res.headers.get("Retry-After")),
+        `Spotify 429 ${path}`
+      );
+    }
+
+    return this.parse<T>(res, path);
+  }
+
+  private async send(
+    path: string,
+    init: ReqInit | undefined,
+    token: string
+  ): Promise<Response> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
     };
     if (init?.body !== undefined) headers["Content-Type"] = "application/json";
 
-    const res = await fetch(`${API_BASE}${path}`, {
+    return fetch(`${API_BASE}${path}`, {
       method: init?.method ?? "GET",
       headers,
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
     });
+  }
 
+  private async parse<T>(res: Response, path: string): Promise<T | null> {
     if (res.status === 204 || res.status === 202) return null;
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -129,6 +230,20 @@ export class SpotifyClient {
     const r = await this.req<QueueResponse>("/me/player/queue");
     return r ?? { currently_playing: null, queue: [] };
   }
+}
+
+/**
+ * Parse a `Retry-After` header per RFC 7231 §7.1.3. Spotify always sends an
+ * integer-seconds form; we don't bother with the HTTP-date variant because
+ * we'd need to handle clock skew anyway. Falls back to DEFAULT_RATE_LIMIT_MS
+ * when the header is missing or unparseable, and clamps to MAX_RATE_LIMIT_MS
+ * to bound the worst case.
+ */
+export function parseRetryAfter(header: string | null): number {
+  if (header === null) return DEFAULT_RATE_LIMIT_MS;
+  const seconds = Number(header);
+  if (!Number.isFinite(seconds) || seconds <= 0) return DEFAULT_RATE_LIMIT_MS;
+  return Math.min(MAX_RATE_LIMIT_MS, Math.round(seconds * 1000));
 }
 
 export function pickCoverUrl(

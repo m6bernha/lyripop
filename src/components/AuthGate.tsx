@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { Music } from "lucide-react";
-import { getStoredTokens, isConfigured, startLogin } from "../lib/auth";
+import {
+  clearStoredTokens,
+  getStoredTokens,
+  isConfigured,
+  startLogin,
+} from "../lib/auth";
 import ClientIdSetup from "./ClientIdSetup";
 
 interface Props {
@@ -13,6 +18,17 @@ type Status =
   | "needs-login"
   | "logging-in"
   | "ready";
+
+export interface AuthContextValue {
+  /**
+   * Clear stored tokens and route the UI back to the "Connect Spotify" screen.
+   * Called by the API client (via useSpotify) when Spotify reports the access
+   * token is unrecoverable — refresh-token revocation, scope demotion, etc.
+   */
+  forceReauth: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export default function AuthGate({ children }: Props) {
   const [status, setStatus] = useState<Status>("checking");
@@ -52,7 +68,19 @@ export default function AuthGate({ children }: Props) {
     setError(null);
   };
 
-  if (status === "ready") return <>{children}</>;
+  const forceReauth = useCallback(async () => {
+    // Idempotent: if we're already in needs-login state, don't re-clear (a
+    // burst of concurrent 401s could fire forceReauth multiple times).
+    setStatus((prev) => (prev === "needs-login" ? prev : "needs-login"));
+    await clearStoredTokens();
+  }, []);
+
+  if (status === "ready")
+    return (
+      <AuthContext.Provider value={{ forceReauth }}>
+        {children}
+      </AuthContext.Provider>
+    );
   if (status === "needs-client-id")
     return <ClientIdSetup onSaved={onClientIdSaved} />;
 

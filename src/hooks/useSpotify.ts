@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  SpotifyAuthError,
   SpotifyClient,
+  SpotifyRateLimitError,
   type PlaybackState,
   type RepeatState,
 } from "../lib/spotify";
-import { getValidAccessToken } from "../lib/auth";
+import { forceRefreshAccessToken, getValidAccessToken } from "../lib/auth";
 
 const POLL_INTERVAL_MS = 1000;
+// Small jitter on top of Spotify's Retry-After so a fleet of clients all
+// resuming at the same instant don't immediately re-trip the limiter.
+const RATE_LIMIT_JITTER_MS = 200;
+
+export interface UseSpotifyOptions {
+  /** Called when polling hits a SpotifyAuthError (401-after-refresh or 403). */
+  onAuthFailure: () => void;
+}
 
 export interface UseSpotifyResult {
   state: PlaybackState | null;
@@ -33,15 +43,24 @@ const NEXT_REPEAT: Record<RepeatState, RepeatState> = {
   track: "off",
 };
 
-export function useSpotify(): UseSpotifyResult {
+export function useSpotify(opts: UseSpotifyOptions): UseSpotifyResult {
   const [state, setState] = useState<PlaybackState | null>(null);
   const [liked, setLiked] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stash the latest onAuthFailure in a ref so the polling effect doesn't have
+  // to re-subscribe (and the SpotifyClient stays referentially stable) every
+  // time the parent re-renders with a fresh callback.
+  const onAuthFailureRef = useRef(opts.onAuthFailure);
+  onAuthFailureRef.current = opts.onAuthFailure;
+
   const clientRef = useRef<SpotifyClient | null>(null);
   if (!clientRef.current) {
-    clientRef.current = new SpotifyClient(() => getValidAccessToken());
+    clientRef.current = new SpotifyClient(
+      () => getValidAccessToken(),
+      () => forceRefreshAccessToken()
+    );
   }
   const client = clientRef.current;
 
@@ -57,14 +76,22 @@ export function useSpotify(): UseSpotifyResult {
     }
   }, [client]);
 
-  // Self-rescheduling poll with exponential backoff on failure. On a healthy
-  // run we tick every POLL_INTERVAL_MS; on failure we back off (1s -> 2s -> 4s
-  // -> 8s -> 16s -> max 32s) so a Spotify outage / lost network doesn't turn
-  // into a 1Hz retry storm. Resets to fast cadence on first success.
+  // Self-rescheduling poll. Three error classes:
+  //   - SpotifyAuthError (401-after-refresh or 403): stop polling and signal
+  //     the parent so it can route back to AuthGate.
+  //   - SpotifyRateLimitError (429): honour Retry-After + small jitter; do
+  //     NOT bump the failures counter (this isn't network/outage flakiness).
+  //   - anything else: exponential ladder 1s → 2s → 4s → 8s → 16s → 32s cap.
+  // Resets to fast cadence on first success.
   useEffect(() => {
     let cancelled = false;
     let failures = 0;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const reschedule = (delay: number) => {
+      if (cancelled) return;
+      timeoutId = setTimeout(tick, delay);
+    };
 
     const tick = async () => {
       try {
@@ -73,18 +100,32 @@ export function useSpotify(): UseSpotifyResult {
         setState(next);
         setError(null);
         failures = 0;
+        setLoading(false);
+        reschedule(POLL_INTERVAL_MS);
       } catch (e) {
         if (cancelled) return;
+        if (e instanceof SpotifyAuthError) {
+          // Bail out of the polling loop entirely — AuthGate will remount
+          // MiniPlayer (and therefore this hook) once the user reconnects.
+          cancelled = true;
+          setError(e.message);
+          setLoading(false);
+          onAuthFailureRef.current();
+          return;
+        }
+        if (e instanceof SpotifyRateLimitError) {
+          // Surface the throttle to the user but keep polling — the limiter
+          // window is short and bumping `failures` here would over-back-off.
+          setError(`Rate limited (retry in ${Math.round(e.retryAfterMs / 1000)}s)`);
+          setLoading(false);
+          reschedule(e.retryAfterMs + RATE_LIMIT_JITTER_MS);
+          return;
+        }
         failures = Math.min(failures + 1, 6);
         setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (cancelled) return;
         setLoading(false);
-        const delay =
-          failures === 0
-            ? POLL_INTERVAL_MS
-            : Math.min(32_000, POLL_INTERVAL_MS * 2 ** failures);
-        timeoutId = setTimeout(tick, delay);
+        const delay = Math.min(32_000, POLL_INTERVAL_MS * 2 ** failures);
+        reschedule(delay);
       }
     };
     tick();

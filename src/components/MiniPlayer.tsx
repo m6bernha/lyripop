@@ -1,12 +1,13 @@
 import { AnimatePresence } from "framer-motion";
 import { Heart, ListMusic, Mic2, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Mode } from "../App";
 import { useSpotify } from "../hooks/useSpotify";
 import { pickCoverUrl } from "../lib/spotify";
 import AmbientBackground from "./AmbientBackground";
+import { AuthContext } from "./AuthGate";
 import ExpandToggle from "./ExpandToggle";
 import HoverControls from "./HoverControls";
 import LyricsCarousel from "./LyricsCarousel";
@@ -29,6 +30,14 @@ export default function MiniPlayer({
   onSetView,
   onToggleMode,
 }: Props) {
+  const auth = useContext(AuthContext);
+  // Wrap forceReauth in a stable callback so useSpotify's ref pattern stays
+  // referentially equal across re-renders. AuthContext is non-null inside
+  // AuthGate's "ready" branch, but we guard defensively in case MiniPlayer
+  // ever ships outside that subtree.
+  const onAuthFailure = useCallback(() => {
+    void auth?.forceReauth();
+  }, [auth]);
   const {
     state,
     liked,
@@ -42,7 +51,7 @@ export default function MiniPlayer({
     cycleRepeat,
     toggleLiked,
     seek,
-  } = useSpotify();
+  } = useSpotify({ onAuthFailure });
   const [hovered, setHovered] = useState(false);
   const [widgetHovered, setWidgetHovered] = useState(false);
 

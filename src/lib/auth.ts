@@ -5,6 +5,7 @@ import {
   onUrl,
 } from "@fabianlars/tauri-plugin-oauth";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { generateCodeChallenge, generateCodeVerifier } from "./pkce";
 
 // Spotify dev quotas changed in May 2025 — extended quota mode is now only
 // granted to organizations (not individuals). Dev-mode apps are capped at
@@ -111,22 +112,6 @@ export async function getEffectiveClientId(): Promise<string> {
 const CLIENT_ID_PATTERN = /^[a-f0-9]{32}$/i;
 export function isValidClientIdFormat(id: string): boolean {
   return CLIENT_ID_PATTERN.test(id.trim());
-}
-
-function base64UrlEncode(bytes: ArrayBuffer): string {
-  const b = String.fromCharCode(...new Uint8Array(bytes));
-  return btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function generateCodeVerifier(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return base64UrlEncode(bytes.buffer);
-}
-
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  const data = new TextEncoder().encode(verifier);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return base64UrlEncode(digest);
 }
 
 async function exchangeCode(
@@ -287,4 +272,25 @@ export async function getValidAccessToken(): Promise<string> {
 export async function isConfigured(): Promise<boolean> {
   const id = await getEffectiveClientId();
   return Boolean(id);
+}
+
+// Bypass the 60-second pre-emptive window in `getValidAccessToken` and refresh
+// the access token unconditionally. Used by the API client when Spotify
+// returns 401 — the local clock might be skewed, the access token might have
+// been revoked early at the server, or our cached `expires_at` could be stale.
+// On a successful refresh we get a fresh token with `Date.now()`-relative
+// `expires_at`; on failure (e.g. refresh token revoked) the caller is expected
+// to surface a re-auth signal and route the user back to AuthGate.
+export async function forceRefreshAccessToken(): Promise<string> {
+  const tokens = await getStoredTokens();
+  if (!tokens) {
+    throw new Error("No tokens to refresh");
+  }
+  const clientId = await getEffectiveClientId();
+  if (!clientId) {
+    throw new Error("No Spotify Client ID configured");
+  }
+  const fresh = await refreshAccessToken(tokens.refresh_token, clientId);
+  await setStoredTokens(fresh);
+  return fresh.access_token;
 }

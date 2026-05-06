@@ -77,3 +77,14 @@ fn toggle_main_window(app: &tauri::AppHandle) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // Smoke test only — exercises the test runner so future contributors have
+    // a place to add real Rust tests when meaningful logic moves into the
+    // tauri side (notably the planned v0.2 keyring swap will need them).
+    #[test]
+    fn smoke() {
+        assert_eq!(1 + 1, 2);
+    }
+}
