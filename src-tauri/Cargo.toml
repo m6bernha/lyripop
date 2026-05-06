@@ -1,6 +1,6 @@
 [package]
 name = "lyripop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Floating Spotify mini-player with synced lyrics"
 authors = ["m6bernha <matthias.bernhard7@gmail.com>"]
 license = "MIT"
