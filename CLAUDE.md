@@ -1,6 +1,6 @@
 # Lyripop — Claude Code project guide
 
-Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 shipped 2026-05-02, post-v0.1.1 features (system tray + full-size mode) on `main` 2026-05-04 — next tag pending.
+Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 shipped 2026-05-02, v0.1.2 shipped 2026-05-06 (vitest pipeline + typed Spotify errors + AuthContext re-auth signal).
 
 ## Mission
 
@@ -25,8 +25,11 @@ Anything else is a SECURITY.md update + CSP loosening + capability grant. High f
 | Dev | `pnpm tauri dev` | Spawns Vite + Tauri webview |
 | Build (prod) | `pnpm tauri build` | Produces MSI + NSIS in `src-tauri/target/release/bundle/` |
 | Type-check | `pnpm exec tsc --noEmit` | Mirrors CI |
+| Tests | `pnpm test` | Vitest, 88 tests on `src/lib/**`. Mirrors CI. |
+| Tests + coverage | `pnpm test:coverage` | Gated 70% lines / 70% functions / 60% branches. |
 | Rust check | `cd src-tauri && cargo check --locked` | Mirrors CI |
 | Rust lint | `cd src-tauri && cargo clippy --locked -- -D warnings` | Mirrors CI |
+| Rust tests | `cd src-tauri && cargo test --locked` | Smoke skeleton only; real tests land with v0.2 keyring swap. |
 
 CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Release: `.github/workflows/release.yml` fires on `v*` tags.
 
@@ -43,28 +46,32 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 | Path | LOC | Purpose |
 |---|---|---|
 | `src/App.tsx` | 92 | Root, AuthGate routing, `mode` + `view` state, window-size driver |
-| `src/components/AuthGate.tsx` | 101 | Auth state machine: `loading` / `needs-client-id` / `needs-login` / `authed` |
+| `src/components/AuthGate.tsx` | 129 | Auth state machine: `loading` / `needs-client-id` / `needs-login` / `authed`. Exports `AuthContext` carrying `forceReauth()` for 401-after-refresh + 403 routing. |
 | `src/components/ClientIdSetup.tsx` | 168 | First-run BYO Client-ID wizard (Spotify May-2025 quota pivot) |
-| `src/components/MiniPlayer.tsx` | 229 | Now-playing + lyrics/queue view toggle + ambient color + widget-level hover state + expanded side-by-side layout |
+| `src/components/MiniPlayer.tsx` | 238 | Now-playing + lyrics/queue view toggle + ambient color + widget-level hover state + expanded side-by-side layout. Consumes `AuthContext` and forwards `onAuthFailure` to `useSpotify`. |
 | `src/components/HoverControls.tsx` | 241 | Inline playback controls + scrubber + volume + share + like |
 | `src/components/LyricsCarousel.tsx` | 176 | Synced lyrics with wheel-scroll, click-to-seek, idle snap-back |
 | `src/components/QueuePanel.tsx` | 130 | Up-next list with click-to-skip preserving rest of queue |
 | `src/components/ExpandToggle.tsx` | 34 | Hover-reveal compact↔expanded button (bottom-right, framer-motion fade) |
 | `src/components/AmbientBackground.tsx` | 35 | Album-color gradient (node-vibrant) |
-| `src/hooks/useSpotify.ts` | 195 | Now-playing polling with exponential backoff (1s→32s) |
+| `src/hooks/useSpotify.ts` | 236 | Now-playing polling. `SpotifyAuthError` → cancel + `onAuthFailure`; `SpotifyRateLimitError` → honour `Retry-After` + 200ms jitter; other → 1s→32s exponential ladder. |
 | `src/hooks/useLyrics.ts` | 104 | lrclib fetch + LRC parsing + active-line tracking |
 | `src/hooks/useAlbumColor.ts` | 154 | node-vibrant extraction with smooth crossfade |
-| `src/lib/auth.ts` | 290 | PKCE OAuth, token storage (`%APPDATA%\com.m6bernha.lyripop\tokens.json`), silent refresh |
-| `src/lib/spotify.ts` | 151 | API client (`apiCall` wrapper) — single point for 401/429 handling work |
+| `src/lib/auth.ts` | 296 | PKCE OAuth (helpers in `pkce.ts`), token storage (`%APPDATA%\com.m6bernha.lyripop\tokens.json`), silent refresh + `forceRefreshAccessToken()` for 401 recovery. |
+| `src/lib/pkce.ts` | 30 | RFC 7636 PKCE helpers (`generateCodeVerifier`, `generateCodeChallenge`, `base64UrlEncode`). Extracted from auth.ts in v0.1.2 for direct unit-testability. |
+| `src/lib/spotify.ts` | 266 | API client. `SpotifyClient.req<T>()` is the single chokepoint — 401 forces refresh + retries once (`SpotifyAuthError`), 403 throws (no retry), 429 throws `SpotifyRateLimitError(retryAfterMs)`. |
 | `src/lib/lrclib.ts` | 86 | LRC parser, plain-lyrics fallback |
-| `src-tauri/src/lib.rs` | 79 | Tauri plugin registration + tray icon (Show/Hide + Quit menu) + window toggle helper |
+| `src/lib/__tests__/` | — | Vitest suites: `pkce.test.ts`, `lrclib.test.ts`, `auth.test.ts` (Map-backed Store fake), `spotify.test.ts` (fetch-mocked). 88 tests total. |
+| `src-tauri/src/lib.rs` | 90 | Tauri plugin registration + tray icon (Show/Hide + Quit menu) + window toggle helper + `#[cfg(test)] mod tests` smoke. |
 | `src-tauri/src/main.rs` | 6 | Entry shim |
 
 ## Reusable patterns (don't reinvent)
 
-- **`cancelled` flag** in polling hooks (`useSpotify.ts:64-95`, `useLyrics.ts:60-89`) — copy this shape for any new polling/async loop.
-- **`apiCall` wrapper** in `spotify.ts` — single chokepoint to add 401/403/429 handling. Don't sprinkle handling at call sites.
-- **Tauri Store key convention** in `auth.ts:44-98` (`store.get("spotify")` / `store.set("spotify", …)`) — wrap behind a `tokenStore` interface for the v0.2 keychain swap.
+- **`cancelled` flag** in polling hooks (`useSpotify.ts`, `useLyrics.ts:60-89`) — copy this shape for any new polling/async loop.
+- **`SpotifyClient.req<T>()`** is the single API chokepoint (private method on the class — NOT a free `apiCall` function; pre-Tier-B notes had this wrong). 401/403/429 handling lives there; don't sprinkle handling at call sites.
+- **Typed errors** for cases callers must branch on: `SpotifyAuthError`, `SpotifyRateLimitError(retryAfterMs)` exported from `spotify.ts`. Plain `Error` for cases that just bubble. Carry this pattern into v0.2's keyring-swap work — see memory `feedback_typed_errors_v0_2_blueprint.md`.
+- **Tauri Store key convention** in `auth.ts` (`store.get("spotify")` / `store.set("spotify", …)`) — wrap behind a `tokenStore` interface for the v0.2 keychain swap.
+- **Vitest mock fakes**: Map-backed `@tauri-apps/plugin-store` fake in `auth.test.ts` (use `vi.resetModules()` between tests to clear the `storePromise` cache); `vi.stubGlobal("fetch", …)` per-test in `spotify.test.ts`. Vitest 4 needs explicit signatures on `vi.fn<sig>()` — see memory `feedback_vitest_4_mock_typing.md`.
 
 ## What I'll likely decline (per CONTRIBUTING.md)
 
