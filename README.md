@@ -19,9 +19,10 @@ A Discord-stream-popout-style desktop widget that pins to a corner of your scree
 - **Like/unlike** from the info strip.
 - **Queue panel** with one-click skip-to-track preserving everything after.
 - **Ambient album-color gradient** background (powered by `node-vibrant`).
-- **Always-on-top, frameless, transparent corners.** Drag from anywhere on the cover.
+- **Always-on-top, frameless, transparent corners.** Drag from anywhere on the cover. (Toggle off in Settings if you're screen-sharing.)
 - **System tray icon** — closing the widget hides it; click the tray icon to bring it back. Right-click for Show/Hide + Quit.
 - **Compact / expanded toggle** — hover the widget to reveal a corner button that swaps between the 320×540 single-panel widget and a 640×540 layout with lyrics and queue side-by-side.
+- **Settings panel** — cog icon in the info strip. Reset Spotify connection (escape hatch for stuck tokens), Sign out, lyrics-fetch toggle, always-on-top toggle, launch-on-startup toggle, polling cadence (1s–10s).
 - **No telemetry. No analytics. No ads.** Direct OAuth to Spotify; tokens never touch a third-party server.
 
 ## Install
@@ -45,7 +46,7 @@ Lyripop talks to exactly four hosts. That's it.
 | `accounts.spotify.com` | OAuth login + token refresh |
 | `api.spotify.com` | Now-playing, queue, controls, like-state |
 | `*.scdn.co` | Album cover images |
-| `lrclib.net` | Synced lyrics (free, open, no auth needed) |
+| `lrclib.net` | Synced lyrics (free, open, no auth needed) — **opt-out via Settings → Lyrics fetching** |
 
 **No telemetry. No analytics. No crash reporters. No third-party servers.** Your Spotify Client ID and tokens are stored in `%APPDATA%\com.m6bernha.lyripop\tokens.json` (read-protected by Windows under your user profile). The Client ID is a public identifier that Spotify itself prints in its dev dashboard — it isn't a secret. Refresh tokens are sensitive; see [SECURITY.md](SECURITY.md) for the full threat model.
 
