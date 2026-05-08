@@ -194,6 +194,20 @@ describe("clearStoredTokens / clearStoredClientId", () => {
     expect(currentStore.__inner.has("spotify")).toBe(false);
     expect(currentStore.__inner.has("clientId")).toBe(false);
   });
+
+  it("clearStoredClientId routes the app back to the wizard (isConfigured -> false)", async () => {
+    // The user-facing contract behind the Settings "Reset Spotify connection"
+    // button: after the reset, AuthGate must route to the first-run wizard.
+    // AuthGate's routing decision is `isConfigured()`, so we lock the
+    // composition in a single integration assertion rather than rely on the
+    // two helpers staying consistent on their own.
+    const { setStoredClientId, clearStoredClientId, isConfigured } =
+      await import("../auth");
+    await setStoredClientId("abcdef0123456789abcdef0123456789");
+    expect(await isConfigured()).toBe(true);
+    await clearStoredClientId();
+    expect(await isConfigured()).toBe(false);
+  });
 });
 
 describe("isConfigured", () => {

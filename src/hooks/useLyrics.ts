@@ -28,7 +28,8 @@ const EMPTY: CachedLyrics = {
 
 export function useLyrics(
   track: SpotifyTrack | null,
-  progressMs: number
+  progressMs: number,
+  enabled: boolean = true
 ): UseLyricsResult {
   const cacheRef = useRef<Map<string, CachedLyrics>>(new Map());
   const trackRef = useRef<SpotifyTrack | null>(track);
@@ -39,11 +40,20 @@ export function useLyrics(
 
   const trackId = track?.id ?? null;
 
-  // Depend ONLY on trackId. The full track object is read from a ref so we
-  // don't re-trigger the effect on every poll-cycle reference change, which
-  // would cancel the in-flight lyrics fetch every second and leave the UI
-  // stuck on "loading...".
+  // Depend on trackId AND enabled so flipping the Settings toggle short-
+  // circuits the next render: when disabled we never call lrclib (the only
+  // non-Spotify outbound host), keeping the privacy boundary tight for
+  // users who don't want any third-party traffic.
+  //
+  // The track object is still read from a ref so we don't re-trigger the
+  // effect on every poll-cycle reference change, which would cancel the
+  // in-flight lyrics fetch every second and leave the UI stuck on "loading…".
   useEffect(() => {
+    if (!enabled) {
+      setData(EMPTY);
+      setLoading(false);
+      return;
+    }
     const t = trackRef.current;
     if (!trackId || !t) {
       setData(EMPTY);
@@ -87,7 +97,7 @@ export function useLyrics(
     return () => {
       cancelled = true;
     };
-  }, [trackId]);
+  }, [trackId, enabled]);
 
   const activeIndex = useMemo(() => {
     if (!data.syncedLines) return -1;

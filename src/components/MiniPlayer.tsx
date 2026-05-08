@@ -1,9 +1,10 @@
 import { AnimatePresence } from "framer-motion";
-import { Heart, ListMusic, Mic2, X } from "lucide-react";
+import { Heart, ListMusic, Mic2, Settings, X } from "lucide-react";
 import { useCallback, useContext, useState } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Mode } from "../App";
+import { useSettings } from "../context/SettingsContext";
 import { useSpotify } from "../hooks/useSpotify";
 import { pickCoverUrl } from "../lib/spotify";
 import AmbientBackground from "./AmbientBackground";
@@ -12,8 +13,9 @@ import ExpandToggle from "./ExpandToggle";
 import HoverControls from "./HoverControls";
 import LyricsCarousel from "./LyricsCarousel";
 import QueuePanel from "./QueuePanel";
+import SettingsPanel from "./SettingsPanel";
 
-export type View = "lyrics" | "queue" | "none";
+export type View = "lyrics" | "queue" | "settings" | "none";
 
 interface Props {
   view: View;
@@ -31,6 +33,7 @@ export default function MiniPlayer({
   onToggleMode,
 }: Props) {
   const auth = useContext(AuthContext);
+  const { pollIntervalMs } = useSettings();
   // Wrap forceReauth in a stable callback so useSpotify's ref pattern stays
   // referentially equal across re-renders. AuthContext is non-null inside
   // AuthGate's "ready" branch, but we guard defensively in case MiniPlayer
@@ -51,7 +54,7 @@ export default function MiniPlayer({
     cycleRepeat,
     toggleLiked,
     seek,
-  } = useSpotify({ onAuthFailure });
+  } = useSpotify({ onAuthFailure, pollIntervalMs });
   const [hovered, setHovered] = useState(false);
   const [widgetHovered, setWidgetHovered] = useState(false);
 
@@ -79,6 +82,8 @@ export default function MiniPlayer({
 
   const onToggleLyrics = () => onSetView(view === "lyrics" ? "none" : "lyrics");
   const onToggleQueue = () => onSetView(view === "queue" ? "none" : "queue");
+  const onToggleSettings = () =>
+    onSetView(view === "settings" ? "none" : "settings");
 
   return (
     <div
@@ -185,6 +190,18 @@ export default function MiniPlayer({
         )}
 
         <button
+          onClick={onToggleSettings}
+          title={view === "settings" ? "Close settings" : "Settings"}
+          className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition-colors ${
+            view === "settings"
+              ? "text-spotify-green hover:text-spotify-green-bright"
+              : "text-white/70 hover:text-white"
+          }`}
+        >
+          <Settings size={16} strokeWidth={2} />
+        </button>
+
+        <button
           onClick={onClose}
           title="Hide widget"
           className="shrink-0 grid place-items-center w-8 h-8 rounded-full text-white/70 hover:text-white transition-colors"
@@ -193,8 +210,13 @@ export default function MiniPlayer({
         </button>
       </div>
 
-      {/* Bottom view: compact = single panel toggle, expanded = both side-by-side */}
-      {isExpanded ? (
+      {/* Bottom view: settings overrides everything; otherwise compact = single
+          panel toggle, expanded = lyrics + queue side-by-side. */}
+      {view === "settings" ? (
+        <div className="relative flex-1 min-h-0 border-t border-white/5">
+          <SettingsPanel onClose={() => onSetView("none")} />
+        </div>
+      ) : isExpanded ? (
         <div className="relative flex-1 min-h-0 flex flex-row border-t border-white/5">
           <div className="relative flex-1 min-w-0">
             <LyricsCarousel

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import AuthGate from "./components/AuthGate";
 import MiniPlayer, { type View } from "./components/MiniPlayer";
+import { SettingsProvider } from "./context/SettingsContext";
 
 const VIEW_PREF_KEY = "view";
 const MODE_PREF_KEY = "mode";
@@ -14,7 +15,7 @@ const DEFAULT_HEIGHT_NO_VIEW = 360;
 
 export type Mode = "compact" | "expanded";
 
-const VALID_VIEWS: View[] = ["lyrics", "queue", "none"];
+const VALID_VIEWS: View[] = ["lyrics", "queue", "settings", "none"];
 const VALID_MODES: Mode[] = ["compact", "expanded"];
 
 function readStoredView(): View {
@@ -79,14 +80,16 @@ export default function App() {
   };
 
   return (
-    <AuthGate>
-      <MiniPlayer
-        view={view}
-        mode={mode}
-        aggressiveColors={aggressiveColors}
-        onSetView={handleSetView}
-        onToggleMode={handleToggleMode}
-      />
-    </AuthGate>
+    <SettingsProvider>
+      <AuthGate>
+        <MiniPlayer
+          view={view}
+          mode={mode}
+          aggressiveColors={aggressiveColors}
+          onSetView={handleSetView}
+          onToggleMode={handleToggleMode}
+        />
+      </AuthGate>
+    </SettingsProvider>
   );
 }

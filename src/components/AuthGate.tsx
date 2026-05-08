@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import { Music } from "lucide-react";
 import {
+  clearStoredClientId,
   clearStoredTokens,
   getStoredTokens,
   isConfigured,
@@ -26,6 +27,14 @@ export interface AuthContextValue {
    * token is unrecoverable — refresh-token revocation, scope demotion, etc.
    */
   forceReauth: () => Promise<void>;
+  /**
+   * Wipe Client ID + tokens and route the UI back to the first-run wizard.
+   * Used when the user's Spotify Developer app itself is in a bad state
+   * (Client ID rotated, app deleted, redirect URI changed) and the only
+   * recovery is to re-pair with a fresh app — escape hatch for stuck-token
+   * scenarios that `forceReauth` alone can't fix.
+   */
+  resetClientId: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -75,9 +84,14 @@ export default function AuthGate({ children }: Props) {
     await clearStoredTokens();
   }, []);
 
+  const resetClientId = useCallback(async () => {
+    setStatus("needs-client-id");
+    await clearStoredClientId();
+  }, []);
+
   if (status === "ready")
     return (
-      <AuthContext.Provider value={{ forceReauth }}>
+      <AuthContext.Provider value={{ forceReauth, resetClientId }}>
         {children}
       </AuthContext.Provider>
     );

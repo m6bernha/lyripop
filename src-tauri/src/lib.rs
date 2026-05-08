@@ -28,6 +28,13 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_oauth::init())
+        // Launch-on-startup. No CLI args are passed when the OS auto-starts
+        // the app — the macos `LaunchAgent` enum is required by the plugin
+        // signature even on Windows (it's ignored at runtime).
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let toggle_item = MenuItemBuilder::with_id("toggle", "Show/Hide").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;

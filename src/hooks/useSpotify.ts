@@ -8,7 +8,7 @@ import {
 } from "../lib/spotify";
 import { forceRefreshAccessToken, getValidAccessToken } from "../lib/auth";
 
-const POLL_INTERVAL_MS = 1000;
+const DEFAULT_POLL_INTERVAL_MS = 1000;
 // Small jitter on top of Spotify's Retry-After so a fleet of clients all
 // resuming at the same instant don't immediately re-trip the limiter.
 const RATE_LIMIT_JITTER_MS = 200;
@@ -16,6 +16,12 @@ const RATE_LIMIT_JITTER_MS = 200;
 export interface UseSpotifyOptions {
   /** Called when polling hits a SpotifyAuthError (401-after-refresh or 403). */
   onAuthFailure: () => void;
+  /**
+   * Polling cadence in milliseconds. Read live (via ref) on every tick, so
+   * a slider change in Settings takes effect on the next scheduled fetch
+   * instead of the next remount. Defaults to 1s (the original behavior).
+   */
+  pollIntervalMs?: number;
 }
 
 export interface UseSpotifyResult {
@@ -54,6 +60,14 @@ export function useSpotify(opts: UseSpotifyOptions): UseSpotifyResult {
   // time the parent re-renders with a fresh callback.
   const onAuthFailureRef = useRef(opts.onAuthFailure);
   onAuthFailureRef.current = opts.onAuthFailure;
+
+  // Same trick for the poll interval: a Settings change should take effect on
+  // the next scheduled tick, not require a remount. The exponential ladder
+  // below intentionally derives from this base, so slowing the cadence also
+  // slows error backoff (which is what the user wants — they asked for less
+  // chatty polling, full stop).
+  const pollIntervalRef = useRef(opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS);
+  pollIntervalRef.current = opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
   const clientRef = useRef<SpotifyClient | null>(null);
   if (!clientRef.current) {
@@ -101,7 +115,7 @@ export function useSpotify(opts: UseSpotifyOptions): UseSpotifyResult {
         setError(null);
         failures = 0;
         setLoading(false);
-        reschedule(POLL_INTERVAL_MS);
+        reschedule(pollIntervalRef.current);
       } catch (e) {
         if (cancelled) return;
         if (e instanceof SpotifyAuthError) {
@@ -124,7 +138,7 @@ export function useSpotify(opts: UseSpotifyOptions): UseSpotifyResult {
         failures = Math.min(failures + 1, 6);
         setError(e instanceof Error ? e.message : String(e));
         setLoading(false);
-        const delay = Math.min(32_000, POLL_INTERVAL_MS * 2 ** failures);
+        const delay = Math.min(32_000, pollIntervalRef.current * 2 ** failures);
         reschedule(delay);
       }
     };

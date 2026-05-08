@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Info } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSettings } from "../context/SettingsContext";
 import { useLyrics } from "../hooks/useLyrics";
 import type { SpotifyTrack } from "../lib/spotify";
 import type { LyricsLine } from "../lib/lrclib";
@@ -17,8 +18,9 @@ const SNAP_BACK_MS = 4000;
 const WHEEL_THROTTLE_MS = 90;
 
 export default function LyricsCarousel({ track, progressMs, onSeek }: Props) {
+  const { lyricsEnabled } = useSettings();
   const { syncedLines, plainLyrics, instrumental, activeIndex, loading } =
-    useLyrics(track, progressMs);
+    useLyrics(track, progressMs, lyricsEnabled);
 
   // Plain lyrics → text-only line list (no timestamps).
   const plainLines = useMemo<LyricsLine[] | null>(() => {
@@ -75,6 +77,15 @@ export default function LyricsCarousel({ track, progressMs, onSeek }: Props) {
   }, [lines, isSynced]);
 
   if (!track) return null;
+  if (!lyricsEnabled) {
+    return (
+      <CenteredText>
+        Lyrics fetching is disabled.
+        <br />
+        Enable it in Settings to fetch from lrclib.net.
+      </CenteredText>
+    );
+  }
   if (loading) return <CenteredText>loading lyrics…</CenteredText>;
   if (instrumental) {
     return (
