@@ -35,3 +35,6 @@ coverage/
 # Claude Code chat-attached images and ad-hoc helper scripts
 image-*.png
 _*.ps1
+
+# Claude Code per-project state (worktrees, settings.local, etc.)
+.claude/
