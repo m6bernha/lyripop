@@ -25,7 +25,7 @@ Anything else is a SECURITY.md update + CSP loosening + capability grant. High f
 | Dev | `pnpm tauri dev` | Spawns Vite + Tauri webview |
 | Build (prod) | `pnpm tauri build` | Produces MSI + NSIS in `src-tauri/target/release/bundle/` |
 | Type-check | `pnpm exec tsc --noEmit` | Mirrors CI |
-| Tests | `pnpm test` | Vitest, 88 tests on `src/lib/**`. Mirrors CI. |
+| Tests | `pnpm test` | Vitest, 97 tests across 5 files in `src/lib/__tests__/`. Mirrors CI. |
 | Tests + coverage | `pnpm test:coverage` | Gated 70% lines / 70% functions / 60% branches. |
 | Rust check | `cd src-tauri && cargo check --locked` | Mirrors CI |
 | Rust lint | `cd src-tauri && cargo clippy --locked -- -D warnings` | Mirrors CI |
