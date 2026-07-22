@@ -28,8 +28,9 @@ A Discord-stream-popout-style desktop widget that pins to a corner of your scree
 ## Install
 
 1. **Download** the latest `Lyripop_x.y.z_x64-setup.msi` from the [Releases page](https://github.com/m6bernha/lyripop/releases) and run it.
-2. **First-run wizard** walks you through a one-time ~3-minute Spotify Developer app setup. The widget itself opens the dashboard, gives you a copy-button for the redirect URI, and validates your Client ID. You only do this once.
-3. **Click "Log in with Spotify"**. Your default browser opens. Approve. The widget populates within a couple seconds.
+2. The installer adds a **Start-menu entry** and **desktop icon** — hit Win+S and type "lyripop", or double-click the desktop icon. Launching again while it's already running just brings the widget to the front.
+3. **First-run wizard** walks you through a one-time ~3-minute Spotify Developer app setup. The widget itself opens the dashboard, gives you a copy-button for the redirect URI, and validates your Client ID. You only do this once.
+4. **Click "Log in with Spotify"**. Your default browser opens. Approve. The widget populates within a couple seconds.
 
 > **Why a dev-app step?** Spotify changed its policy in May 2025 — "extended quota mode" (which would let one shared Client ID work for everyone) is now only granted to organizations with company emails. As a free hobby project run by an individual, the only honest path forward is for each user to spin up their own personal dev app. It takes 3 minutes, it's free, and the upside is your data stays in your own Spotify dev sandbox — Lyripop never proxies anything.
 

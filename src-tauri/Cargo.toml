@@ -1,6 +1,6 @@
 [package]
 name = "lyripop"
-version = "0.1.2"
+version = "0.1.3"
 description = "Floating Spotify mini-player with synced lyrics"
 authors = ["m6bernha <matthias.bernhard7@gmail.com>"]
 license = "MIT"
@@ -22,5 +22,6 @@ tauri-plugin-store = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-oauth = "2"
 tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
