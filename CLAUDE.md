@@ -1,6 +1,6 @@
 # Lyripop — Claude Code project guide
 
-Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 shipped 2026-05-02, v0.1.2 shipped 2026-05-06 (vitest pipeline + typed Spotify errors + AuthContext re-auth signal).
+Floating always-on-top Spotify mini-player widget for Windows. Tauri 2 + React 19 + TS + Tailwind 4 + Vite 7. v0.1.0 shipped 2026-04-27, v0.1.1 shipped 2026-05-02, v0.1.2 shipped 2026-05-06 (vitest pipeline + typed Spotify errors + AuthContext re-auth signal), v0.1.3 shipped 2026-07-22 (single-instance guard — second launch focuses the running widget).
 
 ## Mission
 
@@ -65,7 +65,7 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 | `src/lib/spotify.ts` | 266 | API client. `SpotifyClient.req<T>()` is the single chokepoint — 401 forces refresh + retries once (`SpotifyAuthError`), 403 throws (no retry), 429 throws `SpotifyRateLimitError(retryAfterMs)`. |
 | `src/lib/lrclib.ts` | 86 | LRC parser, plain-lyrics fallback |
 | `src/lib/__tests__/` | — | Vitest suites: `pkce.test.ts`, `lrclib.test.ts`, `auth.test.ts` (Map-backed Store fake), `spotify.test.ts` (fetch-mocked). 88 tests total. |
-| `src-tauri/src/lib.rs` | 90 | Tauri plugin registration + tray icon (Show/Hide + Quit menu) + window toggle helper + `#[cfg(test)] mod tests` smoke. |
+| `src-tauri/src/lib.rs` | ~100 | Tauri plugin registration (single-instance FIRST — second launch shows+focuses the main window) + tray icon (Show/Hide + Quit menu) + window toggle helper + `#[cfg(test)] mod tests` smoke. Gotcha: `pnpm tauri dev` while the installed copy runs will focus the installed widget instead of starting dev — Quit the tray copy first. |
 | `src-tauri/src/main.rs` | 6 | Entry shim |
 
 ## Reusable patterns (don't reinvent)

@@ -19,6 +19,16 @@ pub fn run() {
         | StateFlags::DECORATIONS;
 
     tauri::Builder::default()
+        // Second launch (desktop icon / Start-menu while already running):
+        // surface the existing widget instead of spawning a duplicate. Must be
+        // the FIRST plugin registered so the duplicate process exits before
+        // anything else initializes.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())

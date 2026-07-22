@@ -1,7 +1,7 @@
 {
   "name": "lyripop",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Floating Spotify mini-player with synced lyrics — open source, ad-free, no telemetry.",
   "author": "m6bernha",
   "license": "MIT",
