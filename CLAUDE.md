@@ -25,7 +25,7 @@ Anything else is a SECURITY.md update + CSP loosening + capability grant. High f
 | Dev | `pnpm tauri dev` | Spawns Vite + Tauri webview |
 | Build (prod) | `pnpm tauri build` | Produces MSI + NSIS in `src-tauri/target/release/bundle/` |
 | Type-check | `pnpm exec tsc --noEmit` | Mirrors CI |
-| Tests | `pnpm test` | Vitest, 97 tests across 5 files in `src/lib/__tests__/`. Mirrors CI. |
+| Tests | `pnpm test` | Vitest, 97 tests across 5 files (`src/lib/__tests__/` + `src/hooks/__tests__/`). Mirrors CI. |
 | Tests + coverage | `pnpm test:coverage` | Gated 70% lines / 70% functions / 60% branches. |
 | Rust check | `cd src-tauri && cargo check --locked` | Mirrors CI |
 | Rust lint | `cd src-tauri && cargo clippy --locked -- -D warnings` | Mirrors CI |
@@ -64,7 +64,7 @@ CI: `.github/workflows/ci.yml` runs all of the above on push/PR to `main`. Relea
 | `src/lib/pkce.ts` | 30 | RFC 7636 PKCE helpers (`generateCodeVerifier`, `generateCodeChallenge`, `base64UrlEncode`). Extracted from auth.ts in v0.1.2 for direct unit-testability. |
 | `src/lib/spotify.ts` | 266 | API client. `SpotifyClient.req<T>()` is the single chokepoint — 401 forces refresh + retries once (`SpotifyAuthError`), 403 throws (no retry), 429 throws `SpotifyRateLimitError(retryAfterMs)`. |
 | `src/lib/lrclib.ts` | 86 | LRC parser, plain-lyrics fallback |
-| `src/lib/__tests__/` | — | Vitest suites: `pkce.test.ts`, `lrclib.test.ts`, `auth.test.ts` (Map-backed Store fake), `spotify.test.ts` (fetch-mocked). 88 tests total. |
+| `src/lib/__tests__/` | — | Vitest suites: `pkce.test.ts`, `lrclib.test.ts`, `auth.test.ts` (Map-backed Store fake), `spotify.test.ts` (fetch-mocked); plus `src/hooks/__tests__/useLocalStorage.test.ts`. 97 tests total. |
 | `src-tauri/src/lib.rs` | ~100 | Tauri plugin registration (single-instance FIRST — second launch shows+focuses the main window) + tray icon (Show/Hide + Quit menu) + window toggle helper + `#[cfg(test)] mod tests` smoke. Gotcha: `pnpm tauri dev` while the installed copy runs will focus the installed widget instead of starting dev — Quit the tray copy first. |
 | `src-tauri/src/main.rs` | 6 | Entry shim |
 
